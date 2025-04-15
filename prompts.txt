@@ -1,0 +1,7 @@
+AI Prompts Used: Microsoft copilot
+
+1. "Tell me the step-by-step procedure for modifying Directives.g4."
+2. "Give me the updated method for parse() in GrammarBasedParser.java."
+3. "Where should I create AggregateStatsDirective.java?"
+4. "Provide test cases for AggregateStatsDirective."
+5. "How can I validate my build and tests?"
