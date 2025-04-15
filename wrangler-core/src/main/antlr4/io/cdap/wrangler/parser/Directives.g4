@@ -51,21 +51,22 @@ statements
 
 directive
  : command
-  (   codeblock
-    | identifier
-    | macro
-    | text
-    | number
-    | bool
-    | column
-    | colList
-    | numberList
-    | boolList
-    | stringList
-    | numberRanges
-    | properties
-  )*?
-  ;
+   ( codeblock
+   | identifier
+   | macro
+   | text
+   | number
+   | bool
+   | column
+   | colList
+   | numberList
+   | boolList
+   | stringList
+   | numberRanges
+   | properties
+   | BYTE_SIZE       // Example addition
+   | TIME_DURATION   // Example addition
+   )*?;
 
 ifStatement
   : ifStat elseIfStat* elseStat? '}'
@@ -140,7 +141,12 @@ numberRange
  ;
 
 value
- : String | Number | Column | Bool
+ : String
+ | Number
+ | Column
+ | Bool
+ | BYTE_SIZE         // directly using the token
+ | TIME_DURATION     // directly using the token
  ;
 
 ecommand
@@ -311,3 +317,8 @@ fragment Int
 fragment Digit
  : [0-9]
  ;
+
+BYTE_UNIT: ('KB' | 'MB' | 'GB' | 'TB');
+BYTE_SIZE: DIGIT+ BYTE_UNIT;
+TIME_UNIT: ('ms' | 's' | 'min' | 'hr');
+TIME_DURATION: DIGIT+ TIME_UNIT;

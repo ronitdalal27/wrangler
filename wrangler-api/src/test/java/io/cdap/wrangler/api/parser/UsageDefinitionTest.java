@@ -20,6 +20,8 @@ import io.cdap.wrangler.api.Optional;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
 import java.util.List;
 

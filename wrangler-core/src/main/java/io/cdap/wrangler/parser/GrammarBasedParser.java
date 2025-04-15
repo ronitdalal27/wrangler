@@ -25,6 +25,10 @@ import io.cdap.wrangler.api.DirectiveNotFoundException;
 import io.cdap.wrangler.api.DirectiveParseException;
 import io.cdap.wrangler.api.RecipeException;
 import io.cdap.wrangler.api.RecipeParser;
+import io.cdap.wrangler.api.parser.ByteSize;
+import io.cdap.wrangler.api.parser.TimeDuration;
+import io.cdap.wrangler.api.parser.Token;
+import io.cdap.wrangler.api.parser.TokenType;
 import io.cdap.wrangler.api.parser.UsageDefinition;
 import io.cdap.wrangler.registry.DirectiveInfo;
 import io.cdap.wrangler.registry.DirectiveRegistry;
@@ -37,8 +41,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  * This class <code>GrammarBasedParser</code> is an implementation of <code>RecipeParser</code>.
  * It's responsible for compiling the recipe and checking all the directives exist before concluding
  * that the directives are ready for execution.
+ * @param <DIGITS>
  */
-public class GrammarBasedParser implements RecipeParser {
+public class GrammarBasedParser<DIGITS> implements RecipeParser {
   private static final char EOL = '\n';
   private final String namespace;
   private final DirectiveRegistry registry;
@@ -66,38 +71,50 @@ public class GrammarBasedParser implements RecipeParser {
    *
    * @return List of {@link Directive}.
    */
-  @Override
-  public List<Directive> parse() throws RecipeException {
-    AtomicInteger directiveIndex = new AtomicInteger();
-    try {
-      List<Directive> result = new ArrayList<>();
-
-      new GrammarWalker(new RecipeCompiler(), context).walk(recipe, (command, tokenGroup) -> {
-        directiveIndex.getAndIncrement();
-        DirectiveInfo info = registry.get(namespace, command);
-        if (info == null) {
-          throw new DirectiveNotFoundException(
-            String.format("Directive '%s' not found in system and user scope. Check the name of directive.", command)
-          );
-        }
-
+    @Override
+    public List<Directive> parse() throws RecipeException {
+        AtomicInteger directiveIndex = new AtomicInteger();
         try {
-          Directive directive = info.instance();
-          UsageDefinition definition = directive.define();
-          Arguments arguments = new MapArguments(definition, tokenGroup);
-          directive.initialize(arguments);
-          result.add(directive);
+            List<Directive> result = new ArrayList<>();
 
-        } catch (IllegalAccessException | InstantiationException e) {
-          throw new DirectiveLoadException(e.getMessage(), e);
+            new GrammarWalker(new RecipeCompiler(), context).walk(recipe, (command, tokenGroup) -> {
+                directiveIndex.getAndIncrement();
+                DirectiveInfo info = registry.get(namespace, command);
+                if (info == null) {
+                    throw new DirectiveNotFoundException(
+                        String.format("Directive '%s' not found in system and user scope. Check the name of directive.", command)
+                    );
+                }
+
+                try {
+                    Directive directive = info.instance();
+                    UsageDefinition definition = directive.define();
+                    Arguments arguments = new MapArguments(definition, tokenGroup);
+
+                    // Handle BYTE_SIZE and TIME_DURATION tokens
+                    for (Token token : tokenGroup.getTokens()) {
+                        if (token.type() == TokenType.BYTE_SIZE) {
+                            ByteSize byteSize = (ByteSize) token;
+                            System.out.println("Parsed byte size: " + byteSize.getBytes() + " bytes.");
+                        } else if (token.type() == TokenType.TIME_DURATION) {
+                            TimeDuration timeDuration = (TimeDuration) token;
+                            System.out.println("Parsed time duration: " + timeDuration.getMillis() + " milliseconds.");
+                        }
+                    }
+
+                    directive.initialize(arguments);
+                    result.add(directive);
+
+                } catch (IllegalAccessException | InstantiationException e) {
+                    throw new DirectiveLoadException(e.getMessage(), e);
+                }
+            });
+
+            return result;
+        } catch (DirectiveLoadException | DirectiveNotFoundException | DirectiveParseException e) {
+            throw new RecipeException(e.getMessage(), e, directiveIndex.get());
+        } catch (Exception e) {
+            throw new RecipeException(e.getMessage(), e);
         }
-      });
-
-      return result;
-    } catch (DirectiveLoadException | DirectiveNotFoundException | DirectiveParseException e) {
-      throw new RecipeException(e.getMessage(), e, directiveIndex.get());
-    } catch (Exception e) {
-      throw new RecipeException(e.getMessage(), e);
     }
-  }
 }
